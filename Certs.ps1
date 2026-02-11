@@ -89,3 +89,35 @@ $xml.Envelope.Body.AddResponse.AddResult
   <serviceHostingEnvironment multipleSiteBindingsEnabled="true" />
 </system.serviceModel>
 Setting multipleSiteBindingsEnabled="true" tells WCF to use the incoming request's Host header to build its base address rather than the machine name. This is the most common fix.
+
+
+# Define the SOAP envelope
+$soapBody = @"
+<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"
+               xmlns:web="http://www.example.com/webservice">
+  <soap:Header/>
+  <soap:Body>
+    <web:GetUserInfo>
+      <web:UserId>12345</web:UserId>
+    </web:GetUserInfo>
+  </soap:Body>
+</soap:Envelope>
+"@
+
+# Set headers
+$headers = @{
+    "Content-Type" = "text/xml;charset=UTF-8"
+    "SOAPAction"   = "http://www.example.com/webservice/GetUserInfo"
+}
+
+# Make the request
+$response = Invoke-WebRequest `
+    -Uri "https://www.example.com/service.asmx" `
+    -Method POST `
+    -Headers $headers `
+    -Body $soapBody
+
+# Parse the XML response
+[xml]$xmlResponse = $response.Content
+$xmlResponse.Envelope.Body
