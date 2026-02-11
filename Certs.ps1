@@ -74,3 +74,13 @@ Invoke-WebRequest `
   #Parse Response
   [xml]$xml = $response.Content
 $xml.Envelope.Body.AddResponse.AddResult
+
+
+   <sources>
+        <source name="System.Net" switchValue="Verbose">
+            <listeners>
+                <add name="net" type="System.Diagnostics.TextWriterTraceListener"
+                     initializeData="C:\logs\network.log" />
+            </listeners>
+        </source>
+    </sources>
