@@ -84,3 +84,8 @@ $xml.Envelope.Body.AddResponse.AddResult
             </listeners>
         </source>
     </sources>
+
+    <system.serviceModel>
+  <serviceHostingEnvironment multipleSiteBindingsEnabled="true" />
+</system.serviceModel>
+Setting multipleSiteBindingsEnabled="true" tells WCF to use the incoming request's Host header to build its base address rather than the machine name. This is the most common fix.
