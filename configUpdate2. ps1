@@ -1,0 +1,73 @@
+**Usage example:**
+```
+choco install mypackage --params "'/qDetails:mqUser:mqPass /dbCreds:dbUser:dbPass'"
+
+param(
+    [string]$qDetails,
+    [string]$dbCreds
+)
+
+$ErrorActionPreference = 'Stop'
+
+# Function to replace placeholders in JSON file
+function Update-ConfigFile {
+    param(
+        [string]$FilePath,
+        [string]$CredentialPair
+    )
+
+    if ([string]::IsNullOrWhiteSpace($CredentialPair)) {
+        Write-Host "No credentials provided for $FilePath. Skipping replacement."
+        return
+    }
+
+    if (-not (Test-Path $FilePath)) {
+        Write-Host "File $FilePath not found. Skipping."
+        return
+    }
+
+    $parts = $CredentialPair.Split(":")
+
+    if ($parts.Count -ne 2) {
+        Write-Host "Invalid credential format for $FilePath. Expected format username:password"
+        return
+    }
+
+    $username = $parts[0]
+    $password = $parts[1]
+
+    Write-Host "Updating $FilePath with provided credentials."
+
+    $content = Get-Content $FilePath -Raw
+    $content = $content -replace '\{USER_NAME\}', [Regex]::Escape($username)
+    $content = $content -replace '\{PASSWORD\}', [Regex]::Escape($password)
+
+    Set-Content -Path $FilePath -Value $content -Force
+}
+
+# Determine file paths (assuming package root)
+$packageRoot = Split-Path -Parent $MyInvocation.MyCommand.Definition
+$mqConfigPath = Join-Path $packageRoot "mq-config.json"
+$dbConfigPath = Join-Path $packageRoot "db-config.json"
+
+# Update configuration files if parameters provided
+Update-ConfigFile -FilePath $mqConfigPath -CredentialPair $qDetails
+Update-ConfigFile -FilePath $dbConfigPath -CredentialPair $dbCreds
+
+# Start Windows Service "Weather" if it exists
+$serviceName = "Weather"
+$service = Get-Service -Name $serviceName -ErrorAction SilentlyContinue
+
+if ($null -ne $service) {
+    if ($service.Status -ne 'Running') {
+        Write-Host "Starting service $serviceName..."
+        Start-Service -Name $serviceName
+        Write-Host "Service $serviceName started successfully."
+    }
+    else {
+        Write-Host "Service $serviceName is already running."
+    }
+}
+else {
+    Write-Host "Service $serviceName does not exist. Skipping start."
+}
