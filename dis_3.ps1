@@ -100,3 +100,21 @@ else {
         }
     }
 }
+
+Key points about the backup:
+
+reg.exe export is the standard, safest way to back up a registry node. It produces a normal .reg file containing the node and everything beneath it — all 5 Bespoke Service subkeys, their Name values, everything. Note that reg.exe uses HKLM\... syntax (no :), which is why there are two path variables — $BespokeRoot for PowerShell cmdlets, $BespokeRegPath for reg.exe.
+Restoring is trivial if something goes wrong:
+
+   reg import "D:\Tmp\BespokeServices_backup_20260724_143012.reg"
+(or just double-click the file). The catch block prints this exact command if the cleanup fails midway.
+
+Timestamped filename (yyyyMMdd_HHmmss) — repeated runs never overwrite previous backups, so you keep a history in D:\Tmp.
+Backup is a gate, not a courtesy — the $backupOk flag means: no successful backup → no registry modification at all. This is the behavior you want in an unattended choco install; better to skip the cleanup and log a warning than to modify the registry with no rollback path.
+Exit code check + file existence check — reg.exe returns 0 on success; checking Test-Path $backupFile as well guards against edge cases (e.g., D: exists but is read-only or full, and reg.exe behaved oddly).
+Start-Process -PassThru -Wait is used instead of just calling reg export ... inline so we get a reliable exit code via $regProc.ExitCode. A simpler inline alternative that also works in choco scripts:
+
+powershell   & reg.exe export $BespokeRegPath $backupFile /y | Out-Null
+   if ($LASTEXITCODE -eq 0) { $backupOk = $true }
+Either is fine — pick one style and stay consistent.
+One environmental check: the script assumes D: exists. If some target machines might not have a D: drive, add a Test-Path "D:\" check first and fall back to e.g. $env:TEMP so the backup gate doesn't block the cleanup on those machines.
